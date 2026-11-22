@@ -35,14 +35,23 @@ passwords are kept. Argo CD is installed with Helm only on the first run; after
 that the `argocd` Application owns it, so Argo CD changes are commits to
 `workloads/platform/argocd/`.
 
-## How it works
+## How the bootstrap works
+
+A script does only the two things Git cannot do: install Argo CD, and give it one starting Application. From there,
+Argo CD reads this repo and builds everything else itself, in order.
+
+`./scripts/bootstrap.sh` is the single documented command the assignment asks for: on a clean cluster it brings up
+Argo CD, the platform and both environments. It can be run on its own against any cluster reachable as context
+`kind-release-notes`. `./scripts/up.sh` only adds creating that kind cluster first, so one command works from an
+empty machine too.
 
 ```
 up.sh
 ├─ create-cluster.sh   kind cluster "release-notes", host :80 -> node :30080
-└─ bootstrap.sh        helm install Argo CD (wrapper chart in workloads/platform/argocd)
-                       kubectl apply -f bootstrap/root.yaml ──┐
-                                                              ▼
+└─ bootstrap.sh        1. helm install Argo CD (wrapper chart in workloads/platform/argocd)
+                       2. kubectl apply -f bootstrap/root.yaml ──┐
+                       3. wait until every Application is Synced/Healthy
+                                                                 ▼
    Application/root (project default) ── syncs bootstrap/ from Git, recursively
      ├─ wave -1  AppProject platform, AppProject release-notes
      ├─ wave  0  argocd (adopts the Helm install), gateway-api (CRDs), metrics-server
@@ -50,17 +59,32 @@ up.sh
      └─ wave  2  release-notes-dev, release-notes-prod
 ```
 
-- Each wave starts only when the previous one is Healthy. Argo CD does not
-  check the health of an Application by default; the health check added in
-  `workloads/platform/argocd/values.yaml` makes the waves wait.
-- `root.yaml` sits inside the path it syncs, so root is managed from Git too.
-- Argo CD manages itself: the `argocd` Application renders the same wrapper
-  chart as `bootstrap.sh`, with the same release name, so an Argo CD upgrade is
-  a commit.
-- The only imperative steps are the Argo CD install and applying `root.yaml`.
-- The DB password never goes in Git. Argo CD creates the app namespaces, and
-  the release-notes chart creates Secret `release-notes-db` with a random
-  password in a PreSync Job, only if it is missing (release-notes ADR-0011).
+1. `create-cluster.sh` creates the kind cluster from `kind/cluster.yaml`. That file maps host port 80 to node port
+   30080, which is how `dev.localhost` and `prod.localhost` reach Traefik. An existing cluster is kept.
+2. `bootstrap.sh` installs Argo CD once with Helm. Argo CD cannot install itself, so this is the first of only two
+   imperative steps.
+3. It then applies `bootstrap/root.yaml`, the second and last imperative step. `root` is an Application that syncs
+   the `bootstrap/` folder: two AppProjects and one Application per file in `bootstrap/apps/`. `root.yaml` is inside
+   that folder, so root manages itself from Git too.
+4. Argo CD creates the children in sync waves, and each wave starts only when the previous one is Healthy:
+
+   | Wave | Creates | Why this order |
+   |---|---|---|
+   | -1 | AppProjects `platform`, `release-notes` | Every Application below belongs to one of them |
+   | 0 | `argocd`, `gateway-api`, `metrics-server` | Gateway API CRDs before Traefik uses them; metrics-server before the HPA |
+   | 1 | `traefik` | The Gateway that the app routes attach to |
+   | 2 | `release-notes-dev`, `release-notes-prod` | Need the Gateway and the metrics in place |
+
+   Argo CD does not check an Application's health by default. The health check in
+   `workloads/platform/argocd/values.yaml` makes the waves wait.
+5. The `argocd` Application uses the same chart, release name and namespace as the Helm install, so Argo CD adopts
+   its own install. From then on an Argo CD change is a commit, not a `helm upgrade`.
+6. `bootstrap.sh` waits until root and every Application in `bootstrap/apps/` is Synced and Healthy (up to 15
+   minutes), then prints the URLs. A new file in `bootstrap/apps/` is picked up with no script change.
+
+After the bootstrap, every change is a commit: self-heal reverts a hand edit in the cluster, and prune removes an
+Application whose file is deleted. The database password never goes in Git: the release-notes chart creates Secret
+`release-notes-db` in the cluster with a random password, only if it is missing (release-notes ADR-0011).
 
 Request path:
 
