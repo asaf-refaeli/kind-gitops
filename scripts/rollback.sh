@@ -39,4 +39,4 @@ git push -u origin "rollback-$commit"
 
 # 7. Open a PR and merge it (main only accepts changes through a PR).
 gh pr create --fill
-gh pr merge --squash --delete-branch
+gh pr merge --merge --delete-branch
