@@ -4,8 +4,8 @@
 image:
   # The same build as dev. Written by CI on each deploy (pushed by hand
   # until CI exists). The tag is for people; the digest decides what is pulled.
-  tag: "0.1.1"
-  digest: sha256:31dd65ffc67e94bffd0034153057b5556f93c0c3c30ec2301427bd53a2fa1ef9
+  tag: "0.1.2"
+  digest: sha256:f20def2f9760b054fc04f3c10b8e9ceb03a68b2d004dd1355c134486f0255046
 # HPA on CPU (metrics-server). It owns the replica count, so replicaCount is
 # not set. 2 to 4 is sized for an 8 GB laptop; a real cluster would set it
 # from load tests. DB budget at 4 pods: (4 + 2) x 15 + 1 = 91 < 200
