@@ -14,11 +14,11 @@ metadata:
     # Argo CD refuses to delete a project that Applications still use.
     - resources-finalizer.argocd.argoproj.io
 spec:
-  description: release-notes (FastAPI app + Postgres), chart from the app repo.
+  description: release-notes (FastAPI app + Postgres), chart from the release-notes CI (OCI).
 
   sourceRepos:
-    # Helm chart, versioned with the app code.
-    - https://github.com/asaf-refaeli/release-notes.git
+    # Helm chart, published by the release-notes CI as an OCI artifact.
+    - ghcr.io/asaf-refaeli/charts
     # Environment values ($values source).
     - https://github.com/asaf-refaeli/kind-gitops.git
 
