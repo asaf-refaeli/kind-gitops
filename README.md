@@ -69,11 +69,24 @@ http://prod.localhost ─► host :80 ─► kind node :30080 ─► Traefik ─
   ─► HTTPRoute (host prod.localhost) ─► Service ─► one of the prod pods
 ```
 
-## Environments
+## release-notes
 
-Both environments run the same chart (published by the release-notes CI to
-`ghcr.io/asaf-refaeli/charts`, pinned by version) and the same image. The two Application files differ only in name, namespace
-and values file; every other difference is in the values files:
+The [release-notes](https://github.com/asaf-refaeli/release-notes) app runs in **two environments**, dev and prod,
+**without duplicating manifests**: one Helm chart, published by the app's CI to `ghcr.io/asaf-refaeli/charts`, and
+two Application files (`bootstrap/apps/release-notes-dev.yaml`, `release-notes-prod.yaml`) that differ only in name,
+namespace and values file.
+
+- **Separate settings** live only in `workloads/apps/release-notes/values-dev.yaml` and `values-prod.yaml`. Each
+  Application reads the chart from GHCR (pinned by version) and its values file from this repo (`ref: values`).
+- **Same build** in both: the values files pin the same image tag and digest, and CI updates both in one commit.
+- **Configuration** comes from the values files; the chart's schema rejects unknown keys.
+- **Secrets** are never in Git: the chart creates the database password Secret in the cluster on first sync.
+- **Probes and resource limits** come from the chart; **scaling** differs per environment (table below).
+- **Single command** from a clean machine: `./scripts/up.sh`.
+- **One-command way back**: `./scripts/rollback.sh` reverts the last deploy commit through a PR
+  ([proof](https://github.com/asaf-refaeli/release-notes/blob/main/docs/verification.md)).
+- Project `release-notes` allows only the two namespaces, both on the Pod Security `restricted` profile. Dev is at
+  `http://dev.localhost`, prod at `http://prod.localhost`.
 
 | | dev | prod |
 |---|---|---|
@@ -84,16 +97,20 @@ and values file; every other difference is in the values files:
 | Postgres volume | 1Gi | 2Gi |
 | Hostname | `dev.localhost` | `prod.localhost` |
 
-Each namespace stands in for a separate cluster; in production only the
-Application's `destination.server` would change. Project `release-notes`
-allows only these two namespaces, and Argo CD labels both with the Pod
-Security `restricted` profile.
+Each namespace stands in for a separate cluster. In production only the Application's `destination.server` would
+change.
+
+```bash
+kubectl --context kind-release-notes -n argocd get applications release-notes-dev release-notes-prod   # Synced / Healthy
+kubectl --context kind-release-notes -n release-notes-prod get pods,svc,httproute
+curl http://prod.localhost/api/version
+```
 
 ## How a change ships
 
 | Change | Where | What happens |
 |---|---|---|
-| New app version | `image.tag` + `image.digest` in `values-dev.yaml` / `values-prod.yaml` | Written by the release-notes CI (by hand until that pipeline exists). Argo CD syncs the new image. |
+| New app version | `image.tag` + `image.digest` in `values-dev.yaml` / `values-prod.yaml` | Written by the release-notes CI. Argo CD syncs the new image. |
 | Chart change | `targetRevision` (chart version) of the OCI chart source in `bootstrap/apps/release-notes-*.yaml` | Written by the release-notes CI on each chart release. Argo CD pulls `ghcr.io/asaf-refaeli/charts/release-notes:<version>`; the registry is registered in `workloads/platform/argocd/values.yaml`. |
 | Env setting | `workloads/apps/release-notes/values-*.yaml` | Commit; Argo CD applies it (polls every ~3 min). |
 | Platform | `workloads/platform/<name>/` | Commit; same. A chart bump is a `version` change in `Chart.yaml` plus a new `Chart.lock` (`helm dependency update`). |
