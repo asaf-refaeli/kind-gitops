@@ -1,4 +1,4 @@
-# release-notes, dev environment: Helm chart from the app repo, values from
+# release-notes, dev environment: Helm chart from the release-notes OCI registry, values from
 # this repo. Differs from release-notes-prod.yaml only in name, namespace and
 # values file; every other environment difference lives in the values files.
 apiVersion: argoproj.io/v1alpha1
@@ -16,11 +16,11 @@ metadata:
 spec:
   project: release-notes
   sources:
-    # The chart, versioned with the app code.
-    - repoURL: https://github.com/asaf-refaeli/release-notes.git
-      # Becomes the chart's release tag once one is pushed; main until then.
-      targetRevision: main
-      path: chart
+    # The chart, published by the release-notes CI as an OCI artifact. The version is
+    # written by CI on each chart release; a deploy never follows a branch.
+    - repoURL: ghcr.io/asaf-refaeli/charts
+      chart: release-notes
+      targetRevision: 0.1.1
       helm:
         releaseName: release-notes
         # $values is the root of the source below (ref: values).

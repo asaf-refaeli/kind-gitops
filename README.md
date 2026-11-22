@@ -71,8 +71,8 @@ http://prod.localhost ─► host :80 ─► kind node :30080 ─► Traefik ─
 
 ## Environments
 
-Both environments run the same chart (from the release-notes repo, `chart/`)
-and the same image. The two Application files differ only in name, namespace
+Both environments run the same chart (published by the release-notes CI to
+`ghcr.io/asaf-refaeli/charts`, pinned by version) and the same image. The two Application files differ only in name, namespace
 and values file; every other difference is in the values files:
 
 | | dev | prod |
@@ -94,7 +94,7 @@ Security `restricted` profile.
 | Change | Where | What happens |
 |---|---|---|
 | New app version | `image.tag` + `image.digest` in `values-dev.yaml` / `values-prod.yaml` | Written by the release-notes CI (by hand until that pipeline exists). Argo CD syncs the new image. |
-| Chart change | `targetRevision` of the chart source in `bootstrap/apps/release-notes-*.yaml` | Points at a chart tag in the release-notes repo (`main` until the first tag). |
+| Chart change | `targetRevision` (chart version) of the OCI chart source in `bootstrap/apps/release-notes-*.yaml` | Written by the release-notes CI on each chart release. Argo CD pulls `ghcr.io/asaf-refaeli/charts/release-notes:<version>`; the registry is registered in `workloads/platform/argocd/values.yaml`. |
 | Env setting | `workloads/apps/release-notes/values-*.yaml` | Commit; Argo CD applies it (polls every ~3 min). |
 | Platform | `workloads/platform/<name>/` | Commit; same. A chart bump is a `version` change in `Chart.yaml` plus a new `Chart.lock` (`helm dependency update`). |
 

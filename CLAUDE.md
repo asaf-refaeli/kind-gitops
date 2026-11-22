@@ -7,8 +7,9 @@ Guidance for Claude Code in this repo.
 GitOps repo for the release-notes service on a local kind cluster. Argo CD
 deploys everything from here: platform components (Argo CD itself, Gateway
 API CRDs, Traefik, metrics-server) and the app in two environments (dev,
-prod). The app's Helm chart lives in the release-notes repo (`chart/`); this
-repo holds only the per-environment values. See README.md for the layout.
+prod). The app's Helm chart lives in the release-notes repo (`chart/`) and is
+published by its CI to `ghcr.io/asaf-refaeli/charts` (OCI); this repo pins its
+version and holds only the per-environment values. See README.md for the layout.
 
 ## Rules
 

@@ -3,6 +3,14 @@
 # defaults are left alone on purpose.
 argo-cd:
   configs:
+    # Helm charts published by the release-notes CI as OCI artifacts. Public, so no credentials;
+    # enableOCI makes Argo CD pull them with the OCI protocol instead of a Helm index.yaml.
+    repositories:
+      release-notes-charts:
+        name: release-notes-charts
+        type: helm
+        url: ghcr.io/asaf-refaeli/charts
+        enableOCI: "true"
     cm:
       # Health check for Argo CD's own Application kind, copied from the Argo CD
       # docs (operator-manual/health.md). Argo CD removed it in v1.8, so by
