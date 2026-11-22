@@ -4,20 +4,16 @@
 image:
   # The same build as prod. Written by CI on each deploy (pushed by hand
   # until CI exists). The tag is for people; the digest decides what is pulled.
-  tag: sha-e062c53
-  digest: sha256:4c12f0ae55a1b3d072047db76f1a4bfe06662d6128336888d0523b1c81d72e12
-
+  tag: "0.1.1"
+  digest: sha256:31dd65ffc67e94bffd0034153057b5556f93c0c3c30ec2301427bd53a2fa1ef9
 # One pod, no HPA: dev only has to prove the build runs.
 replicaCount: 1
 autoscaling:
   enabled: false
-
 # Off: with one replica a PDB protects nothing.
 podDisruptionBudget:
   enabled: false
-
 logLevel: DEBUG
-
 # HTTPRoute attached to the platform's Gateway (workloads/platform/traefik).
 route:
   enabled: true
@@ -25,7 +21,6 @@ route:
   gateway:
     name: web
     namespace: traefik
-
 postgres:
   storage:
     # Same as the chart default, stated so the two envs compare side by side.
